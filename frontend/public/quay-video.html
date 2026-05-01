@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quay Video Nhận Hoàn</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap');
+  :root {
+    --bg:#0d0f12; --surface:#161a20; --surface2:#1e242d; --border:#2a3240;
+    --accent:#00e5a0; --accent2:#0099ff; --warn:#ff6b35; --red:#ff3b3b;
+    --text:#e8edf5; --muted:#6b7a8d; --rec:#ff2d2d;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans Thai',sans-serif;min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden;}
+  header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;}
+  .logo{display:flex;align-items:center;gap:10px;}
+  .logo-icon{width:36px;height:36px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+  .logo-text{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:var(--accent);letter-spacing:.05em;line-height:1.2;}
+  .logo-sub{font-size:10px;color:var(--muted);font-weight:400;letter-spacing:.1em;text-transform:uppercase;}
+  #clock{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;color:var(--accent);letter-spacing:.05em;}
+  #clock-date{font-size:11px;color:var(--muted);text-align:right;font-family:'IBM Plex Mono',monospace;margin-top:2px;}
+  main{flex:1;display:grid;grid-template-columns:1fr 340px;height:calc(100vh - 62px);}
+  .video-panel{position:relative;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  #preview{width:100%;height:100%;object-fit:contain;display:block;}
+  #osd{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;}
+  .osd-top-left{position:absolute;top:16px;left:16px;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:8px 12px;}
+  .osd-order-id{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:var(--accent);letter-spacing:.05em;}
+  .osd-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:2px;}
+  .osd-top-right{position:absolute;top:16px;right:16px;text-align:right;}
+  .osd-datetime{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;color:#fff;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:6px 12px;display:inline-block;}
+  .rec-badge{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.75);border:1px solid var(--rec);border-radius:100px;padding:6px 16px;opacity:0;transition:opacity .3s;}
+  .rec-badge.visible{opacity:1;}
+  .rec-dot{width:10px;height:10px;background:var(--rec);border-radius:50%;animation:blink 1s infinite;}
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+  .rec-text{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:var(--rec);letter-spacing:.1em;}
+  #rec-timer{font-family:'IBM Plex Mono',monospace;font-size:13px;color:rgba(255,255,255,.8);letter-spacing:.05em;}
+  #no-cam{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:var(--surface);}
+  #no-cam .icon{font-size:52px;opacity:.3;}
+  #no-cam p{color:var(--muted);font-size:14px;}
+  #no-cam button{margin-top:8px;background:var(--accent);color:#000;border:none;border-radius:8px;padding:10px 20px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;}
+  .side-panel{background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+  .panel-section{padding:16px;border-bottom:1px solid var(--border);}
+  .section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+  .section-title::before{content:'';display:inline-block;width:3px;height:12px;background:var(--accent);border-radius:2px;}
+  #status-box{border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);transition:all .3s;min-height:72px;}
+  #status-box.ready{border-color:var(--accent);background:rgba(0,229,160,.05);}
+  #status-box.recording{border-color:var(--rec);background:rgba(255,45,45,.08);}
+  #status-box.saved{border-color:var(--accent2);background:rgba(0,153,255,.08);}
+  #status-box.error{border-color:var(--warn);background:rgba(255,107,53,.08);}
+  .status-icon{font-size:28px;flex-shrink:0;}
+  .status-title{font-weight:700;font-size:15px;line-height:1.2;}
+  .status-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+  .scan-display{background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:10px;min-height:54px;transition:border-color .2s;}
+  .scan-display.scanning{border-color:var(--accent2);animation:scanpulse .5s ease;}
+  @keyframes scanpulse{0%{box-shadow:0 0 0 0 rgba(0,153,255,.4);}100%{box-shadow:0 0 0 8px rgba(0,153,255,0);}}
+  .scan-icon{font-size:20px;opacity:.6;}
+  #barcode-display{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;color:var(--accent);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+  .scan-hint{font-size:11px;color:var(--muted);margin-top:6px;text-align:center;}
+  .setting-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;}
+  .setting-row:last-child{margin-bottom:0;}
+  .setting-label{font-size:12px;color:var(--muted);flex:1;}
+  .setting-row select{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 8px;font-family:'IBM Plex Mono',monospace;font-size:11px;width:120px;}
+  .setting-row select:focus{outline:none;border-color:var(--accent);}
+  /* Folder picker button */
+  #folder-btn{width:100%;background:var(--surface2);border:1px dashed var(--border);border-radius:8px;color:var(--muted);font-family:inherit;font-size:12px;padding:10px;cursor:pointer;text-align:center;transition:all .2s;margin-bottom:6px;}
+  #folder-btn:hover{border-color:var(--accent);color:var(--accent);}
+  #folder-btn.selected{border-color:var(--accent);color:var(--accent);background:rgba(0,229,160,.06);}
+  #folder-info{font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;word-break:break-all;line-height:1.5;}
+  .log-area{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+  .log-area .panel-section{padding-bottom:8px;flex-shrink:0;}
+  #log-list{flex:1;overflow-y:auto;padding:0 8px 8px;}
+  #log-list::-webkit-scrollbar{width:4px;}
+  #log-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+  .log-item{padding:8px 10px;border-radius:6px;margin-bottom:4px;font-size:11px;display:flex;gap:8px;align-items:flex-start;animation:fadein .3s ease;}
+  @keyframes fadein{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+  .log-item.success{background:rgba(0,229,160,.08);border-left:2px solid var(--accent);}
+  .log-item.info{background:rgba(0,153,255,.06);border-left:2px solid var(--accent2);}
+  .log-item.error{background:rgba(255,107,53,.08);border-left:2px solid var(--warn);}
+  .log-time{font-family:'IBM Plex Mono',monospace;color:var(--muted);flex-shrink:0;font-size:10px;margin-top:1px;}
+  .log-msg{color:var(--text);line-height:1.4;}
+  .log-order{font-family:'IBM Plex Mono',monospace;color:var(--accent);font-weight:600;}
+  #cam-select{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 10px;font-family:'IBM Plex Sans Thai',sans-serif;font-size:12px;cursor:pointer;}
+  #cam-select:focus{outline:none;border-color:var(--accent);}
+  .flash-overlay{position:absolute;inset:0;background:rgba(0,229,160,.15);pointer-events:none;opacity:0;transition:opacity .05s;}
+  .flash-overlay.flash{opacity:1;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="logo-icon">📦</div>
+    <div>
+      <div class="logo-text">NHẬN HOÀN REC</div>
+      <div class="logo-sub">Quay video bằng chứng nhận hàng hoàn</div>
+    </div>
+  </div>
+  <div style="text-align:right">
+    <div id="clock">00:00:00</div>
+    <div id="clock-date"></div>
+  </div>
+</header>
+
+<main>
+  <div class="video-panel">
+    <video id="preview" autoplay muted playsinline></video>
+    <div id="osd">
+      <div class="osd-top-left">
+        <div class="osd-label">Mã vận đơn</div>
+        <div class="osd-order-id" id="osd-order">—</div>
+      </div>
+      <div class="osd-top-right">
+        <div class="osd-datetime" id="osd-time">—</div>
+      </div>
+    </div>
+    <div class="rec-badge" id="rec-badge">
+      <div class="rec-dot"></div>
+      <span class="rec-text">REC</span>
+      <span id="rec-timer">00:00</span>
+    </div>
+    <div class="flash-overlay" id="flash"></div>
+    <div id="no-cam">
+      <div class="icon">📷</div>
+      <p>Chưa có camera. Nhấn để kết nối.</p>
+      <button onclick="initCamera()">Kết nối Camera</button>
+    </div>
+  </div>
+
+  <div class="side-panel">
+    <div class="panel-section">
+      <div class="section-title">Trạng thái</div>
+      <div id="status-box">
+        <div class="status-icon" id="status-icon">⏳</div>
+        <div>
+          <div class="status-title" id="status-title">Đang khởi động...</div>
+          <div class="status-sub" id="status-sub">Vui lòng chờ</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-title">Quét mã vận đơn</div>
+      <div class="scan-display" id="scan-display">
+        <div class="scan-icon">🔍</div>
+        <div id="barcode-display">Chờ quét mã...</div>
+      </div>
+      <div class="scan-hint">Quét lần 1 → bắt đầu quay &nbsp;|&nbsp; Quét lần 2 → lưu video</div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-title">Thư mục lưu video</div>
+      <button id="folder-btn" onclick="chooseFolder()">📁 Chọn thư mục gốc lưu video</button>
+      <div id="folder-info">Chưa chọn thư mục — video sẽ tự tạo thư mục theo ngày</div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-title">Camera</div>
+      <select id="cam-select" onchange="switchCamera(this.value)">
+        <option value="">— Chọn camera —</option>
+      </select>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-title">Cài đặt</div>
+      <div class="setting-row">
+        <span class="setting-label">Chất lượng video</span>
+        <select id="quality-select">
+          <option value="low">Nhỏ (480p)</option>
+          <option value="medium" selected>Vừa (720p)</option>
+          <option value="high">Cao (1080p)</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Định dạng</span>
+        <select id="format-select">
+          <option value="webm" selected>WebM (nhỏ nhất)</option>
+          <option value="mp4">MP4</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="log-area">
+      <div class="panel-section">
+        <div class="section-title" style="margin-bottom:0;justify-content:space-between;display:flex;align-items:center">
+          <span style="display:flex;align-items:center;gap:6px">
+            <span style="display:inline-block;width:3px;height:12px;background:var(--accent);border-radius:2px"></span>Lịch sử
+          </span>
+          <button onclick="clearLog()" style="background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer;font-family:inherit">Xoá</button>
+        </div>
+      </div>
+      <div id="log-list"></div>
+    </div>
+  </div>
+</main>
+<canvas id="canvas" style="display:none"></canvas>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let mediaStream = null, mediaRecorder = null, recordedChunks = [];
+let currentOrderId = null, recordingStartTime = null;
+let recTimerInterval = null, isRecording = false;
+let barcodeBuffer = '', barcodeTimer = null;
+let availableCameras = [];
+let rootDirHandle = null; // File System Access API
+
+// ============================================================
+// CLOCK
+// ============================================================
+function padZ(n){ return String(n).padStart(2,'0'); }
+function formatDateTime(d){
+  return `${padZ(d.getDate())}/${padZ(d.getMonth()+1)}/${d.getFullYear()}  ${padZ(d.getHours())}:${padZ(d.getMinutes())}:${padZ(d.getSeconds())}`;
+}
+function tickClock(){
+  const now = new Date();
+  document.getElementById('clock').textContent = `${padZ(now.getHours())}:${padZ(now.getMinutes())}:${padZ(now.getSeconds())}`;
+  document.getElementById('clock-date').textContent = `${['CN','T2','T3','T4','T5','T6','T7'][now.getDay()]} ${padZ(now.getDate())}/${padZ(now.getMonth()+1)}/${now.getFullYear()}`;
+  document.getElementById('osd-time').textContent = formatDateTime(now);
+}
+setInterval(tickClock, 1000); tickClock();
+
+// ============================================================
+// FILE SYSTEM ACCESS API — Chọn thư mục + tạo folder theo ngày
+// ============================================================
+async function chooseFolder(){
+  try {
+    rootDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    const btn = document.getElementById('folder-btn');
+    btn.textContent = '✅ ' + rootDirHandle.name;
+    btn.classList.add('selected');
+    document.getElementById('folder-info').textContent = `Thư mục gốc: ${rootDirHandle.name}\nVideo sẽ lưu vào: ${rootDirHandle.name}/${getTodayFolder()}/`;
+    addLog('info', `Đã chọn thư mục: <span class="log-order">${rootDirHandle.name}</span>`);
+  } catch(e) {
+    if(e.name !== 'AbortError') addLog('error', 'Không chọn được thư mục: ' + e.message);
+  }
+}
+
+function getTodayFolder(){
+  const now = new Date();
+  return `${now.getFullYear()}-${padZ(now.getMonth()+1)}-${padZ(now.getDate())}`;
+}
+
+async function getOrCreateTodayFolder(){
+  if(!rootDirHandle) return null;
+  const folderName = getTodayFolder();
+  try {
+    const dayHandle = await rootDirHandle.getDirectoryHandle(folderName, { create: true });
+    return dayHandle;
+  } catch(e) {
+    addLog('error', 'Không tạo được thư mục ngày: ' + e.message);
+    return null;
+  }
+}
+
+// ============================================================
+// CAMERA
+// ============================================================
+async function initCamera(deviceId){
+  const quality = document.getElementById('quality-select').value;
+  const constraints = {
+    video: {
+      deviceId: deviceId ? { exact: deviceId } : undefined,
+      width:  { ideal: quality==='high'?1920 : quality==='medium'?1280 : 854 },
+      height: { ideal: quality==='high'?1080 : quality==='medium'?720  : 480 },
+      frameRate: { ideal: 25 }
+    },
+    audio: false
+  };
+  try {
+    if(mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+    mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+    document.getElementById('preview').srcObject = mediaStream;
+    document.getElementById('no-cam').style.display = 'none';
+    setStatus('ready','✅','Sẵn sàng','Quét mã vận đơn để bắt đầu quay');
+    addLog('info','Camera đã kết nối');
+    await loadCameraList();
+  } catch(e){
+    setStatus('error','⚠️','Lỗi Camera',e.message);
+    addLog('error','Không kết nối được camera: ' + e.message);
+  }
+}
+
+async function loadCameraList(){
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    availableCameras = devices.filter(d => d.kind==='videoinput');
+    const sel = document.getElementById('cam-select');
+    sel.innerHTML = '';
+    availableCameras.forEach((cam,i) => {
+      const opt = document.createElement('option');
+      opt.value = cam.deviceId;
+      opt.textContent = cam.label || `Camera ${i+1}`;
+      sel.appendChild(opt);
+    });
+    if(mediaStream){
+      const activeId = mediaStream.getVideoTracks()[0].getSettings().deviceId;
+      sel.value = activeId;
+    }
+  } catch(e){}
+}
+
+function switchCamera(deviceId){ if(deviceId) initCamera(deviceId); }
+
+// ============================================================
+// STATUS
+// ============================================================
+function setStatus(type,icon,title,sub){
+  const box = document.getElementById('status-box');
+  box.className = type;
+  box.id = 'status-box';
+  document.getElementById('status-icon').textContent = icon;
+  document.getElementById('status-title').textContent = title;
+  document.getElementById('status-sub').textContent = sub;
+}
+
+// ============================================================
+// BARCODE — HID input
+// ============================================================
+document.addEventListener('keydown', function(e){
+  if(e.key.length > 1 && e.key !== 'Enter') return;
+  if(e.key === 'Enter'){
+    if(barcodeBuffer.length > 3) handleBarcode(barcodeBuffer.trim());
+    barcodeBuffer = ''; clearTimeout(barcodeTimer); return;
+  }
+  barcodeBuffer += e.key;
+  clearTimeout(barcodeTimer);
+  barcodeTimer = setTimeout(() => { barcodeBuffer = ''; }, 200);
+});
+
+function handleBarcode(code){
+  const scanDisplay = document.getElementById('scan-display');
+  scanDisplay.classList.add('scanning');
+  setTimeout(() => scanDisplay.classList.remove('scanning'), 500);
+  document.getElementById('barcode-display').textContent = code;
+  flashScreen(); beep();
+  if(!isRecording){
+    if(!mediaStream){
+      addLog('error','Chưa có camera! Không thể quay.');
+      setStatus('error','⚠️','Lỗi','Chưa kết nối camera');
+      return;
+    }
+    currentOrderId = code;
+    document.getElementById('osd-order').textContent = code;
+    startRecording(code);
+  } else {
+    if(code !== currentOrderId) addLog('info',`Quét mã khác (${code}), lưu video mã cũ: ${currentOrderId}`);
+    stopRecording();
+  }
+}
+
+// ============================================================
+// RECORDING
+// ============================================================
+function getMimeType(){
+  const fmt = document.getElementById('format-select').value;
+  const types = fmt==='mp4'
+    ? ['video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm']
+    : ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+  return types.find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
+}
+
+function startRecording(orderId){
+  if(!mediaStream) return;
+  recordedChunks = [];
+  const mimeType = getMimeType();
+  const canvas = document.getElementById('canvas');
+  const videoEl = document.getElementById('preview');
+  const w = videoEl.videoWidth || 1280, h = videoEl.videoHeight || 720;
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  const canvasStream = canvas.captureStream(25);
+
+  function drawFrame(){
+    if(!isRecording) return;
+    ctx.drawImage(videoEl, 0, 0, w, h);
+    const now = new Date();
+    const dtStr = formatDateTime(now);
+    const orderStr = `Mã: ${orderId}`;
+    ctx.save();
+    const fontSize = Math.max(14, Math.round(h*0.025));
+    ctx.font = `bold ${fontSize}px "Courier New",monospace`;
+    const pad = 8, gap = 6;
+    const dt_w = ctx.measureText(dtStr).width;
+    const ord_w = ctx.measureText(orderStr).width;
+    const bw = Math.max(dt_w, ord_w) + pad*2;
+    const bh = fontSize*2 + gap + pad*2;
+    const bx = 12, by = h - bh - 12;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    roundRect(ctx, bx, by, bw, bh, 6); ctx.fill();
+    ctx.fillStyle = '#00e5a0'; ctx.fillText(orderStr, bx+pad, by+pad+fontSize);
+    ctx.fillStyle = '#ffffff'; ctx.fillText(dtStr, bx+pad, by+pad+fontSize+gap+fontSize);
+    ctx.restore();
+    requestAnimationFrame(drawFrame);
+  }
+
+  isRecording = true; recordingStartTime = Date.now(); drawFrame();
+  const options = { mimeType, videoBitsPerSecond: getVideoBitrate() };
+  try { mediaRecorder = new MediaRecorder(canvasStream, options); }
+  catch(e) { mediaRecorder = new MediaRecorder(canvasStream); }
+  mediaRecorder.ondataavailable = e => { if(e.data && e.data.size > 0) recordedChunks.push(e.data); };
+  mediaRecorder.onstop = () => saveVideo(orderId);
+  mediaRecorder.start(1000);
+  document.getElementById('rec-badge').classList.add('visible');
+  setStatus('recording','🔴','Đang quay...',`Mã: ${orderId}`);
+  addLog('success',`Bắt đầu quay — Mã: <span class="log-order">${orderId}</span>`);
+  recTimerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now()-recordingStartTime)/1000);
+    const m = Math.floor(elapsed/60), s = elapsed%60;
+    document.getElementById('rec-timer').textContent = `${padZ(m)}:${padZ(s)}`;
+  }, 1000);
+}
+
+function stopRecording(){
+  if(!mediaRecorder || !isRecording) return;
+  isRecording = false; clearInterval(recTimerInterval);
+  mediaRecorder.stop();
+  document.getElementById('rec-badge').classList.remove('visible');
+  document.getElementById('rec-timer').textContent = '00:00';
+  setStatus('saved','💾','Đang lưu...',`Mã: ${currentOrderId}`);
+}
+
+function getVideoBitrate(){
+  const q = document.getElementById('quality-select').value;
+  return q==='high' ? 2500000 : q==='medium' ? 1200000 : 600000;
+}
+
+async function saveVideo(orderId){
+  const fmt = document.getElementById('format-select').value;
+  const ext = fmt==='mp4' ? 'mp4' : 'webm';
+  const blob = new Blob(recordedChunks, { type: getMimeType() });
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}${padZ(now.getMonth()+1)}${padZ(now.getDate())}_${padZ(now.getHours())}${padZ(now.getMinutes())}${padZ(now.getSeconds())}`;
+  const filename = `nhanhoann_${orderId}_${dateStr}.${ext}`;
+  const sizeMB = (blob.size/1024/1024).toFixed(1);
+
+  // Thử lưu vào thư mục đã chọn (File System API)
+  if(rootDirHandle){
+    try {
+      const dayDir = await getOrCreateTodayFolder();
+      if(dayDir){
+        const fileHandle = await dayDir.getFileHandle(filename, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        const folderPath = `${rootDirHandle.name}/${getTodayFolder()}/${filename}`;
+        setStatus('ready','✅','Đã lưu!',`${filename} — ${sizeMB} MB`);
+        addLog('success',`✅ Đã lưu vào thư mục ngày: <span class="log-order">${folderPath}</span> (${sizeMB} MB)`);
+        // Cập nhật folder info
+        document.getElementById('folder-info').textContent = `Thư mục gốc: ${rootDirHandle.name}\nHôm nay: ${getTodayFolder()}/\nFile vừa lưu: ${filename}`;
+      }
+    } catch(e) {
+      addLog('error','Lỗi lưu file: ' + e.message + ' — tải về Downloads...');
+      downloadFallback(blob, filename);
+    }
+  } else {
+    // Fallback: download bình thường
+    downloadFallback(blob, filename);
+    addLog('info',`💾 Đã tải về Downloads: <span class="log-order">${filename}</span> (${sizeMB} MB) — Chọn thư mục để lưu tự động theo ngày`);
+  }
+
+  // Reset
+  currentOrderId = null;
+  document.getElementById('osd-order').textContent = '—';
+  document.getElementById('barcode-display').textContent = 'Chờ quét mã...';
+  recordedChunks = [];
+  setTimeout(() => { if(!isRecording) setStatus('ready','✅','Sẵn sàng','Quét mã vận đơn để bắt đầu quay'); }, 3000);
+}
+
+function downloadFallback(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  setStatus('ready','✅','Đã tải về Downloads',filename);
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+}
+function flashScreen(){
+  const f = document.getElementById('flash'); f.classList.add('flash');
+  setTimeout(() => f.classList.remove('flash'), 150);
+}
+function beep(){
+  try {
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 1800; osc.type = 'sine';
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.12);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime+0.12);
+  } catch(e){}
+}
+function addLog(type,html){
+  const list = document.getElementById('log-list');
+  const now = new Date();
+  const t = `${padZ(now.getHours())}:${padZ(now.getMinutes())}:${padZ(now.getSeconds())}`;
+  const div = document.createElement('div');
+  div.className = `log-item ${type}`;
+  div.innerHTML = `<span class="log-time">${t}</span><span class="log-msg">${html}</span>`;
+  list.insertBefore(div, list.firstChild);
+  while(list.children.length > 50) list.removeChild(list.lastChild);
+}
+function clearLog(){ document.getElementById('log-list').innerHTML = ''; }
+
+// ============================================================
+// STARTUP
+// ============================================================
+window.addEventListener('load', async () => {
+  setStatus('','⏳','Đang khởi động...','Xin chờ');
+  await initCamera();
+});
+document.getElementById('no-cam').style.display = 'flex';
+</script>
+</body>
+</html>

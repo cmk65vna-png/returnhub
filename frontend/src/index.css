@@ -1,0 +1,33 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --border: #e8e6df;
+  --border2: #d4d1c7;
+  --text: #1a1917;
+  --text2: #6b6860;
+  --text3: #9b9890;
+  --accent: #1a56db;
+  --accent-bg: #eff4ff;
+  --accent-text: #1a56db;
+  --danger: #e02424;
+  --danger-bg: #fdf2f2;
+  --success: #057a55;
+  --success-bg: #f3faf7;
+  --warning: #c27803;
+  --warning-bg: #fdf6b2;
+  --tiktok: #0f766e;
+  --tiktok-bg: #f0fdf4;
+  --shopee: #c2410c;
+  --shopee-bg: #fff7ed;
+  --font: 'Be Vietnam Pro', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+  --radius: 8px;
+  --radius-lg: 12px;
+}
+body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+button { font-family: var(--font); cursor: pointer; }
+input, select { font-family: var(--font); }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }

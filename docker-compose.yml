@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: returnhub-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - returnhub-data:/app/data
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=sqlite:////app/data/returnhub.db
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: returnhub-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  returnhub-data:
