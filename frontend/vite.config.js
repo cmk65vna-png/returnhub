@@ -5,8 +5,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
-    port: 3000,
-    proxy: {
+    port: parseInt(process.env.PORT) || 3000,
+    proxy: process.env.VITE_API_URL ? undefined : {
       '/api': { target: 'http://backend:8000', changeOrigin: true }
     }
   }

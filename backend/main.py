@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import returns, warehouse, reconcile, platforms, stats, orders
+from routers import returns, warehouse, reconcile, platforms, stats, orders, shops
 import uvicorn
 
 app = FastAPI(title="ReturnHub API", version="1.0.0")
@@ -18,6 +18,7 @@ app.include_router(reconcile.router, prefix="/api/reconcile", tags=["reconcile"]
 app.include_router(platforms.router, prefix="/api/platforms", tags=["platforms"])
 app.include_router(stats.router, prefix="/api/stats", tags=["stats"])
 app.include_router(orders.router, prefix="/api/orders", tags=["orders"])
+app.include_router(shops.router, prefix="/api/shops", tags=["shops"])
 
 @app.get("/api/health")
 def health():

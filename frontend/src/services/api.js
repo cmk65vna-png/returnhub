@@ -1,5 +1,10 @@
 import axios from 'axios'
-const api = axios.create({ baseURL: '/api' })
+
+// Khi chạy local: proxy qua vite -> backend:8000
+// Khi chạy Railway: dùng VITE_API_URL = URL của backend service
+const BASE = import.meta.env.VITE_API_URL || ''
+
+const api = axios.create({ baseURL: BASE + '/api' })
 
 export const getStats = () => api.get('/stats/dashboard').then(r => r.data)
 export const getReturns = (params) => api.get('/returns/', { params }).then(r => r.data)
@@ -20,3 +25,9 @@ export const getOrderStats = (params) => api.get('/orders/stats', { params }).th
 export const getRevenueChart = (params) => api.get('/orders/revenue', { params }).then(r => r.data)
 export const getInventory = () => api.get('/orders/inventory').then(r => r.data)
 export const getInventoryStats = () => api.get('/orders/inventory/stats').then(r => r.data)
+export const getShops = () => api.get('/shops/').then(r => r.data)
+export const createShop = (body) => api.post('/shops/', body).then(r => r.data)
+export const updateShop = (id, body) => api.put(`/shops/${id}`, body).then(r => r.data)
+export const deleteShop = (id) => api.delete(`/shops/${id}`).then(r => r.data)
+export const syncShop = (id) => api.post(`/shops/${id}/sync`).then(r => r.data)
+export const getAllShopStats = () => api.get('/shops/stats/all').then(r => r.data)
